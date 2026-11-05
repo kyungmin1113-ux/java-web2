@@ -1,10 +1,10 @@
-# 자바웹프로그래밍 | 2~7주차 실습 기록
+# 자바웹프로그래밍 | 2~9주차 실습 기록
 
 **성결대학교 미디어소프트웨어학과 · 20230968 기경민**
 
-개인 포트폴리오에서 MySQL 연동, 로그인·권한 관리, REST API까지 확장한 Spring Boot 프로젝트입니다. 주차별 구현 내용, 연습문제와 실제 실행 화면을 한 페이지에 정리했습니다.
+개인 포트폴리오에서 MySQL 연동, 로그인·권한 관리, REST API와 게시판까지 확장한 Spring Boot 프로젝트입니다. 주차별 구현 내용, 연습문제와 실제 실행 화면을 한 페이지에 정리했습니다.
 
-[2주차](#week-02) · [3주차](#week-03) · [4주차](#week-04) · [5주차](#week-05) · [6주차](#week-06) · [7주차](#week-07) · [실행 방법](#run)
+[2주차](#week-02) · [3주차](#week-03) · [4주차](#week-04) · [5주차](#week-05) · [6주차](#week-06) · [7주차](#week-07) · [9주차](#week-09) · [실행 방법](#run)
 
 | 개발 환경 | 구성 |
 | --- | --- |
@@ -13,7 +13,7 @@
 | 데이터·보안 | MySQL `spring` · Spring Data JPA · Spring Security · BCrypt |
 | 테스트 | JUnit · MockMvc · H2 |
 
-> 아래 화면은 **2026-10-24 VS Code 프로젝트를 실행하여 실제 DB와 기존 계정으로 캡처**했습니다. 관리자 화면은 기존 `admin` 계정, 회원 검색은 기경민(`rlrudals13`) 데이터를 사용했습니다. 이미지를 클릭하면 원본 크기로 볼 수 있습니다.
+> 2~7주차 화면은 **2026-10-24**, 9주차 화면은 **2026-11-04** 프로젝트를 실행하여 캡처했습니다. 관리자 화면은 기존 `admin` 계정, 회원 검색은 기경민(`rlrudals13`) 데이터를 사용했습니다. 이미지를 클릭하면 원본 크기로 볼 수 있습니다.
 
 <a id="week-02"></a>
 ## 2주차 | 개발 환경 설정과 기본 테스트
@@ -117,6 +117,46 @@ curl -u admin 'http://localhost:8080/api/admin/members?keyword=student'
 
 </details>
 
+<a id="week-09"></a>
+## 9주차 | 게시판 CRUD와 본인 확인
+
+제공된 게시판 화면을 연결하고 글 작성·목록·상세·수정·삭제를 구현했습니다. `posts.member_id`는 `@ManyToOne`으로 회원과 연결하며, 작성자는 입력값이 아니라 로그인한 계정으로 저장합니다. 제목·내용의 빈 값과 제목 100자 제한을 서버에서 검사하고, 잘못 입력하면 내용을 유지한 채 오류를 표시합니다.
+
+수정은 **작성자 본인만**, 삭제는 **작성자 또는 ADMIN**만 가능합니다. 화면에서 버튼을 구분하고 서비스에서도 작성자를 검사하기 때문에 주소를 직접 입력하거나 요청을 보내도 남의 글을 수정할 수 없습니다. 관리자도 다른 사람의 글은 수정할 수 없습니다. 없는 게시글은 404 안내 화면을 표시합니다.
+
+**연습① 조회수:** 상세 화면을 열 때마다 1 증가하며 목록·수정 화면을 열 때는 늘지 않습니다. DB에서 증가 연산을 수행하여 동시 조회 시 증가분 유실을 방지했습니다.
+
+**연습② 내가 쓴 글:** `/board/my`에서 로그인한 회원의 글만 최신순으로 보여줍니다. 목록 화면을 재사용하고 제목을 ‘내가 쓴 글’로 변경했습니다.
+
+| 게시글 목록 | 상세 화면 · 조회수 3회 |
+| --- | --- |
+| [![9주차 - 게시판 목록](docs/images/weeks/week09-list.png)](docs/images/weeks/week09-list.png) | [![9주차 - 게시글 상세와 조회수](docs/images/weeks/week09-detail.png)](docs/images/weeks/week09-detail.png) |
+
+<details>
+<summary>내가 쓴 글·입력 오류·404·모바일 화면 보기</summary>
+
+| 내가 쓴 글 | 제목 누락 검사 |
+| --- | --- |
+| [![9주차 연습 - 내가 쓴 글](docs/images/weeks/week09-my-posts.png)](docs/images/weeks/week09-my-posts.png) | [![9주차 - 필수 입력값 오류](docs/images/weeks/week09-validation.png)](docs/images/weeks/week09-validation.png) |
+
+| 없는 글 · 404 | 모바일 상세 |
+| --- | --- |
+| [![9주차 - 없는 게시글 404](docs/images/weeks/week09-not-found.png)](docs/images/weeks/week09-not-found.png) | [![9주차 - 모바일 게시글](docs/images/weeks/week09-mobile.png)](docs/images/weeks/week09-mobile.png) |
+
+</details>
+
+| 기능 | 주소 | 접근 규칙 |
+| --- | --- | --- |
+| 목록·상세 | `GET /board`, `GET /board/{id}` | 누구나 |
+| 작성 | `GET·POST /board/write` | 로그인 회원 |
+| 내 글 목록 | `GET /board/my` | 로그인 회원 |
+| 수정 | `GET·POST /board/{id}/edit` | 작성자 본인 |
+| 삭제 | `POST /board/{id}/delete` | 작성자 또는 ADMIN |
+
+게시판은 HTML 폼 방식으로 구현하여 CSRF 검사를 유지합니다. 제목·본문은 `th:text`로 출력해 입력한 HTML이 실행되지 않게 했습니다. 글은 MySQL에 저장되며 Git에는 코드만 저장됩니다. 글을 쓴 회원을 삭제할 때는 연결된 게시글을 먼저 삭제해야 합니다. 회원 삭제와 게시글의 외래 키 처리 정책은 다음 주차 범위입니다.
+
+9주차 게시판 자동 테스트 9개를 추가하여 기존 테스트와 합쳐 **16개가 통과**했습니다. 비로그인 접근, 작성자 위조 방지, 남의 글 수정·삭제 차단, 관리자 삭제·수정 제한, 입력 검증, 조회수, 내 글 목록과 HTML 이스케이프를 확인했습니다. 캡처에 사용한 확인용 게시글은 검증 후 삭제했습니다.
+
 <a id="run"></a>
 ## 실행 및 검증
 
@@ -141,6 +181,8 @@ VS Code 터미널에서 아래 명령으로 서버를 실행한 뒤, 브라우�
 | 내 정보 | `/mypage` | 로그인 회원 |
 | DB 조회 | `/testdb` | ADMIN·MANAGER |
 | 관리자 화면 | `/admin/members`, `/admin/members-api` | ADMIN |
+| 게시판 목록·상세 | `/board`, `/board/{id}` | 공개 |
+| 글쓰기·내 글 | `/board/write`, `/board/my` | 로그인 회원 |
 
 **실행하면서 확인한 내용**
 
