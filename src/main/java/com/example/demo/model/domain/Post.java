@@ -1,6 +1,8 @@
 package com.example.demo.model.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -33,4 +35,8 @@ public class Post {
 
     @Column(nullable = false)
     private int viewCount = 0;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE)
+    @org.hibernate.annotations.BatchSize(size = 10)
+    private List<Comment> comments = new ArrayList<>();
 }

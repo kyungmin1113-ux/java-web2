@@ -6,6 +6,8 @@ import java.util.Optional;
 import com.example.demo.model.domain.Member;
 import com.example.demo.model.dto.MemberForm;
 import com.example.demo.model.repository.MemberRepository;
+import com.example.demo.model.repository.PostRepository;
+import com.example.demo.model.repository.CommentRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,10 +26,15 @@ public class MemberService implements UserDetailsService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
 
-    public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder) {
+    public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
+                         PostRepository postRepository, CommentRepository commentRepository) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
+        this.postRepository = postRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Transactional
@@ -86,6 +93,9 @@ public class MemberService implements UserDetailsService {
     public void deleteMember(Long id) {
         Member member = findMember(id);
         preventSelfManagement(member);
+        if (postRepository.existsByAuthor(member) || commentRepository.existsByAuthor(member)) {
+            throw new IllegalArgumentException("작성한 글이나 댓글이 있는 회원은 삭제할 수 없습니다.");
+        }
         memberRepository.delete(member);
     }
 

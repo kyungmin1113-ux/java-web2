@@ -9,6 +9,8 @@ import com.example.demo.model.dto.PostForm;
 import com.example.demo.model.repository.MemberRepository;
 import com.example.demo.model.repository.PostRepository;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class PostService {
 
+    public static final int PAGE_SIZE = 10;
+
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
 
@@ -33,6 +37,22 @@ public class PostService {
 
     public List<Post> findAll() {
         return postRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
+    public Page<Post> findPage(String keyword, String type, int page) {
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "id"));
+        if (keyword == null || keyword.isBlank()) {
+            return postRepository.findAll(pageable);
+        }
+        return "writer".equals(type)
+            ? postRepository.searchByWriter(keyword.trim(), pageable)
+            : postRepository.search(keyword.trim(), pageable);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public Page<Post> findMyPage(String username, int page) {
+        return postRepository.findByAuthor_Username(username,
+            PageRequest.of(Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "id")));
     }
 
     @PreAuthorize("isAuthenticated()")
