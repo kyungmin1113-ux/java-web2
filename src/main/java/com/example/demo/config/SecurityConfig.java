@@ -42,6 +42,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
                 .requestMatchers("/api/hello").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/board", "/board/", "/board/{id:\\d+}").permitAll()
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/testdb").hasAnyRole("ADMIN", "MANAGER")

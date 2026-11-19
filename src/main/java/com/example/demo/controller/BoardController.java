@@ -8,6 +8,7 @@ import com.example.demo.model.service.PostService;
 import com.example.demo.model.service.CommentService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
@@ -53,7 +54,11 @@ public class BoardController {
     }
 
     @PostMapping("/write")
-    public String write(@ModelAttribute PostForm postForm, Principal principal, Model model) {
+    public String write(@ModelAttribute PostForm postForm, BindingResult binding, Principal principal, Model model) {
+        if (binding.hasErrors()) {
+            model.addAttribute("error", "모집 인원은 1~100의 정수로 입력하세요.");
+            return "board/form";
+        }
         try {
             Post post = postService.write(postForm, principal.getName());
             return "redirect:/board/" + post.getId();
@@ -79,6 +84,7 @@ public class BoardController {
         form.setContent(post.getContent());
         model.addAttribute("postForm", form);
         model.addAttribute("postId", id);
+        model.addAttribute("posterFile", post.getPosterFile());
         return "board/form";
     }
 
@@ -90,13 +96,18 @@ public class BoardController {
         } catch (IllegalArgumentException exception) {
             model.addAttribute("error", exception.getMessage());
             model.addAttribute("postId", id);
+            model.addAttribute("posterFile", postService.findForEdit(id).getPosterFile());
             return "board/form";
         }
     }
 
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id) {
-        postService.delete(id);
-        return "redirect:/board?deleted";
+        try {
+            postService.delete(id);
+            return "redirect:/board?deleted";
+        } catch (IllegalStateException exception) {
+            return "redirect:/board/" + id + "?deleteError";
+        }
     }
 }

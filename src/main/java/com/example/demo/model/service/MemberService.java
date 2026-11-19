@@ -8,6 +8,7 @@ import com.example.demo.model.dto.MemberForm;
 import com.example.demo.model.repository.MemberRepository;
 import com.example.demo.model.repository.PostRepository;
 import com.example.demo.model.repository.CommentRepository;
+import com.example.demo.model.repository.EnrollmentRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,13 +29,16 @@ public class MemberService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
-                         PostRepository postRepository, CommentRepository commentRepository) {
+                         PostRepository postRepository, CommentRepository commentRepository,
+                         EnrollmentRepository enrollmentRepository) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Transactional
@@ -95,6 +99,9 @@ public class MemberService implements UserDetailsService {
         preventSelfManagement(member);
         if (postRepository.existsByAuthor(member) || commentRepository.existsByAuthor(member)) {
             throw new IllegalArgumentException("작성한 글이나 댓글이 있는 회원은 삭제할 수 없습니다.");
+        }
+        if (enrollmentRepository.existsByMember(member)) {
+            throw new IllegalArgumentException("신청 내역이 있는 회원은 삭제할 수 없습니다.");
         }
         memberRepository.delete(member);
     }

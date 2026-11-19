@@ -39,4 +39,15 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE)
     @org.hibernate.annotations.BatchSize(size = 10)
     private List<Comment> comments = new ArrayList<>();
+
+    private Integer capacity;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int appliedCount = 0;
+
+    private String posterFile;
+
+    public boolean isRecruit() { return capacity != null; }
+    public boolean isFull() { return isRecruit() && appliedCount >= capacity; }
+    public int getRemaining() { return isRecruit() ? capacity - appliedCount : 0; }
 }

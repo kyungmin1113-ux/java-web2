@@ -2,6 +2,9 @@ package com.example.demo.model.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
+import org.springframework.web.multipart.MultipartFile;
+import com.example.demo.model.repository.EnrollmentRepository;
 
 import com.example.demo.model.domain.Member;
 import com.example.demo.model.domain.Post;
@@ -19,6 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -29,14 +34,23 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final FileStore fileStore;
 
-    public PostService(PostRepository postRepository, MemberRepository memberRepository) {
+    public PostService(PostRepository postRepository, MemberRepository memberRepository,
+                       EnrollmentRepository enrollmentRepository, FileStore fileStore) {
         this.postRepository = postRepository;
         this.memberRepository = memberRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.fileStore = fileStore;
     }
 
     public List<Post> findAll() {
         return postRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
+    public List<Post> findAllById(Collection<Long> ids) {
+        return postRepository.findAllById(ids);
     }
 
     public Page<Post> findPage(String keyword, String type, int page) {
@@ -84,6 +98,8 @@ public class PostService {
         post.setContent(form.getContent());
         post.setAuthor(author);
         post.setCreatedAt(LocalDateTime.now());
+        post.setCapacity(form.getCapacity());
+        post.setPosterFile(savePoster(form.getPoster()));
         return postRepository.save(post);
     }
 
@@ -99,6 +115,11 @@ public class PostService {
     public Post edit(Long id, PostForm form) {
         Post post = findForEdit(id);
         validate(form);
+        String poster = savePoster(form.getPoster());
+        if (poster != null) {
+            deletePosterAfterCommit(post.getPosterFile());
+            post.setPosterFile(poster);
+        }
         post.setTitle(form.getTitle().trim());
         post.setContent(form.getContent());
         post.setUpdatedAt(LocalDateTime.now());
@@ -112,10 +133,41 @@ public class PostService {
         if (!isAdmin()) {
             checkWriter(post);
         }
+        if (enrollmentRepository.existsByPost(post)) {
+            throw new IllegalStateException("신청자가 있는 모집글은 삭제할 수 없습니다.");
+        }
+        String poster = post.getPosterFile();
         postRepository.delete(post);
+        deletePosterAfterCommit(poster);
+    }
+
+    private String savePoster(MultipartFile file) {
+        String poster = fileStore.save(file);
+        if (poster != null) {
+            // 파일은 DB 롤백에 포함되지 않으므로 저장 실패 시 직접 정리한다.
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status != STATUS_COMMITTED) fileStore.delete(poster);
+                }
+            });
+        }
+        return poster;
+    }
+
+    private void deletePosterAfterCommit(String poster) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStore.delete(poster);
+            }
+        });
     }
 
     private void validate(PostForm form) {
+        if (form.getCapacity() != null && (form.getCapacity() < 1 || form.getCapacity() > 100)) {
+            throw new IllegalArgumentException("모집 인원은 1~100명으로 입력하세요.");
+        }
         if (form.getTitle() == null || form.getTitle().isBlank()
             || form.getContent() == null || form.getContent().isBlank()) {
             throw new IllegalArgumentException("제목과 내용을 모두 입력하세요.");
