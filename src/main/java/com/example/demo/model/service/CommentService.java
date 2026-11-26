@@ -8,6 +8,8 @@ import com.example.demo.model.domain.Member;
 import com.example.demo.model.domain.Post;
 import com.example.demo.model.repository.CommentRepository;
 import com.example.demo.model.repository.MemberRepository;
+import com.example.demo.model.dto.Notification;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,11 +24,14 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final MemberRepository memberRepository;
     private final PostService postService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public CommentService(CommentRepository commentRepository, MemberRepository memberRepository, PostService postService) {
+    public CommentService(CommentRepository commentRepository, MemberRepository memberRepository, PostService postService,
+                          ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
         this.memberRepository = memberRepository;
         this.postService = postService;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<Comment> findByPost(Post post) {
@@ -48,7 +53,13 @@ public class CommentService {
         comment.setAuthor(author);
         comment.setCreatedAt(LocalDateTime.now());
         post.getComments().add(comment);
-        return commentRepository.save(comment);
+        Comment saved = commentRepository.save(comment);
+        String writer = post.getAuthor().getUsername();
+        if (!writer.equals(username)) {
+            eventPublisher.publishEvent(new Notification(writer,
+                author.getName() + "님이 '" + post.getTitle() + "' 에 댓글을 남겼습니다.", post.getId()));
+        }
+        return saved;
     }
 
     @Transactional

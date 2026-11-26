@@ -17,9 +17,15 @@
 
     <body>
         <header class="board-header">
-            <div class="container">
+            <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <span id="rt-status" class="rt-status" role="status">○ 실시간 연결 중…</span>
+                    <span id="noti-bell" sec:authorize="isAuthenticated()" class="noti-bell" aria-label="받은 알림"><i class="bi-bell"></i><span id="noti-count" class="badge bg-danger" hidden>0</span></span>
+                </div>
+                <div>
                 <a th:href="@{/board}" class="small"><i class="bi-arrow-left me-1"></i>목록으로</a>
                 <h1 class="mt-1"><i class="bi-chat-square-text me-2"></i>게시판</h1>
+                </div>
             </div>
         </header>
 
@@ -44,18 +50,17 @@
                     <div th:if="${post.recruit or post.posterFile != null}" class="recruit-box d-flex flex-wrap gap-4 align-items-center mb-4">
                         <!-- 포스터 : /uploads/파일이름 (WebConfig 가 uploads 폴더와 연결) -->
                         <img th:if="${post.posterFile != null}" th:src="@{/uploads/{f}(f=${post.posterFile})}" class="recruit-poster" alt="포스터">
-                        <div th:if="${post.recruit}" class="flex-grow-1">
-                            <span th:if="${post.full}" class="recruit-badge closed">마감</span>
-                            <span th:unless="${post.full}" class="recruit-badge">모집 중</span>
+                        <div th:if="${post.recruit}" class="flex-grow-1" th:attr="data-seat-post=${post.id}">
+                            <span class="recruit-badge" th:classappend="${post.full} ? 'closed'" data-field="badge" th:text="${post.full} ? '마감' : '모집 중'">모집 중</span>
                             <p class="mt-2 mb-1">정원 <strong th:text="${post.capacity}">5</strong>명 ·
-                                신청 <strong th:text="${post.appliedCount}">0</strong>명 ·
-                                남은 자리 <strong class="text-primary" th:text="${post.remaining}">5</strong></p>
+                                신청 <strong data-field="applied" th:text="${post.appliedCount}">0</strong>명 ·
+                                남은 자리 <strong class="text-primary" data-field="remaining" th:text="${post.remaining}">5</strong></p>
                             <div class="progress mb-3" style="height: 8px">
-                                <div class="progress-bar" th:style="|width: ${post.appliedCount * 100 / post.capacity}%|"></div>
+                                <div class="progress-bar" data-field="bar" th:style="|width: ${post.appliedCount * 100 / post.capacity}%|"></div>
                             </div>
                             <!-- 바구니 담기 : 로그인 + 마감 전. POST /cart/{id} (단계 2) -->
-                            <form sec:authorize="isAuthenticated()" th:unless="${post.full}" th:action="@{/cart/{id}(id=${post.id})}" method="post" class="m-0">
-                                <button type="submit" class="btn btn-primary btn-sm-custom"><i class="bi-basket me-1"></i>신청 바구니에 담기</button>
+                            <form sec:authorize="isAuthenticated()" th:action="@{/cart/{id}(id=${post.id})}" method="post" class="m-0">
+                                <button type="submit" data-field="add" th:disabled="${post.full}" class="btn btn-primary btn-sm-custom"><i class="bi-basket me-1"></i>신청 바구니에 담기</button>
                             </form>
                             <p sec:authorize="isAnonymous()" class="text-muted small mb-0"><a th:href="@{/login}">로그인</a>하면 신청할 수 있습니다.</p>
                         </div>
@@ -126,5 +131,8 @@
                 </div>
             </div>
         </main>
+        <div id="toast-area" class="toast-area" aria-live="polite"></div>
+        <script th:src="@{/js/stomp.umd.min.js}"></script>
+        <script th:src="@{/js/realtime.js}"></script>
     </body>
 </html>
